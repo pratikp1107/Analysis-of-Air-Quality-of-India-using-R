@@ -1,0 +1,212 @@
+---
+title: "AQI"
+output:
+  word_document: default
+  html_notebook: default
+  pdf_document: default
+---
+
+
+***Phase - 1 : Importing the csv file into R studio***
+
+```{r}
+getwd()
+AQI_data = read.csv('AQIdatasetmain.csv')
+```
+**getwd() : **      -- To get or set Working directory.  
+**read.csv() :**    -- To read the comma seperated value files.
+
+
+***Phase - 2 : To see the content what data holds***
+
+```{r}
+head(AQI_data)
+```
+
+**Shapiro Test: **
+```{r}
+apply(AQI_data[,c(3:14)],2,shapiro.test)
+```
+P-value is < alpha(0.05), so we can say that the data is not normal.
+
+
+**head(data) : **  -- Return the first parts of the matrix,table or dataframe  
+
+**Phase - 3 : To know the summary of data(mean,median,mode,Quantile)**
+
+```{r}
+# Moderate , Poor , Satisfactory, Very Poor, Severe,  Good
+summary(AQI_data)
+
+```
+
+***Phase - 4 : To know the current situation of ***
+
+```{r}
+#Moderate,Very Poor,Poor , Severe , Good, Satisfactory
+Average = mean(AQI_data$AQI)
+moderate = length(which(AQI_data$AQI_Bucket == 'Moderate'))
+VeryPoor = length(which(AQI_data$AQI_Bucket == 'Very_Poor'))
+Poor = length(which(AQI_data$AQI_Bucket == 'Poor'))
+Severe = length(which(AQI_data$AQI_Bucket == 'Severe'))
+Satisfactory = length(which(AQI_data$AQI_Bucket == 'Satisfactory'))
+Good = length(which(AQI_data$AQI_Bucket == 'Good'))
+pie_chart = cbind(Severe,VeryPoor,Poor,Average,moderate,Satisfactory,Good)
+percentage = round(100*pie_chart/sum(pie_chart),)
+pie(pie_chart,labels = percentage,col = rainbow(length(pie_chart)),main = "AQI Status",radius = 1)
+
+legend("topright",c("Severe","Very_Poor","Poor","Moderate","Satisfactory","Good"),cex = 0.5,fill = rainbow(length(pie_chart)))
+
+```
+
+
+***Phase - 5 : Correlation between different affecting AQI***
+
+```{r}
+pairs(AQI_data[,c(3:6,15)])
+pairs(AQI_data[,c(7:10,15)])
+pairs(AQI_data[,c(11:15)])
+```
+
+
+***Phase - 6 : Testing of Hypothesis***
+
+Correlation
+
+H0 : Correlation between Xylene and AQI is zero.
+H1 : Correlation between Xylene and AQI is not zero.
+
+```{r}
+cor.test(AQI_data$Xylene,AQI_data$AQI,method = 'spearman')
+
+```
+
+
+H0 : Correlation between PM2.5 and AQI is zero.
+H1 : Correlation between PM2.5 and AQI is not zero.
+
+```{r}
+cor.test(AQI_data$PM2.5,AQI_data$AQI,method = 'spearman')
+```
+
+
+```{r}
+plot(x = AQI_data$PM2.5, y = AQI_data$AQI,xlab ="PM 2.5",ylab = "AQI values",main = "Correlation") 
+abline(lm(AQI_data$AQI~AQI_data$PM2.5))
+```
+
+
+***Phase - 7 : ***
+
+```{r}
+Lalu = aggregate(x = AQI_data$AQI,by = list(AQI_data$StationId),FUN = mean)
+colnames(Lalu)[1] = "State" 
+colnames(Lalu)[2] = "AvgAQI" 
+print(Lalu)
+require(ggplot2)
+ggplot(Lalu,aes(x = State,y = AvgAQI)) + ggtitle("State-wise AQI Values") + geom_bar(stat = "identity",color ="blue", fill = "steelblue") + theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = 0.5))
+```
+
+
+***Phase - 8 : Regression***
+
+
+Ho : There is no significant relationship between the variables 
+H1 : There is significant relationship between the variables
+
+
+Linear regression 
+
+```{r}
+linear_rega= lm(AQI ~ CO,AQI_data)
+summary(linear_rega)
+```
+
+```{r}
+linear_rega
+```
+
+```{r}
+df1 = data.frame(CO = 1.69)
+predict(linear_rega,df1)
+```
+
+```{r}
+plot(x = AQI_data$CO, y = AQI_data$AQI,xlab ="CO",ylab = "AQI values",main = "Regression of CO levels and AQI values",abline(linear_rega),cex = 1.3,pch=20,col="Dark Blue") 
+
+```
+
+
+
+
+
+
+Multiple Regression
+```{r}
+rega = lm(AQI ~ PM2.5 + PM10 + NO + NO2 + NOx + NH3 + CO + SO2 + O3 + Benzene + Toluene + Xylene ,AQI_data)
+summary(rega)
+```
+
+
+
+
+
+```{r}
+xyz = data.frame(PM2.5=25.2,PM10=69,NO=28.5,NO2=37,NOx=24.3,NH3=21.3,CO=0.89,SO2=22.9,O3=108,Benzene=3.5,Toluene=6.9,Xylene=4)
+predict(rega,xyz)
+
+```
+
+
+
+
+
+
+
+```{r}
+cor_matrix = cor(AQI_data[,c(3:15)],method = 'spearman')
+round(cor_matrix,2)
+```
+
+
+Corplot:
+
+```{r}
+require(corrplot)
+corrplot(cor(AQI_data[,c(3:15)],method = 'spearman'), method = 'number',type = 'upper',number.cex = 0.75, )
+```
+
+
+
+
+
+
+```{r}
+Munni = aggregate(x=AQI_data$AQI,by=list(AQI_data$City),FUN = mean)
+Badnam = Munni[c(2,15),]
+colnames(Badnam)[1] = "City" 
+colnames(Badnam)[2] = "AvgAQI" 
+ggplot(Badnam,aes(x = City, y = AvgAQI)) + ggtitle("City-wise AQI Values") + geom_bar(stat = "identity",color ="red", fill = "steelblue") + geom_text(aes(label = AvgAQI),vjust = 1.2,color = "white", position = position_dodge(0.9),size = 3.5 )
+
+
+```
+
+
+
+Chi Square:
+
+```{r}
+getwd()
+chi_sq = read.csv("Column_15_16.csv")
+head(chi_sq)
+
+# Chi-Square test:
+data1 = data.matrix(chi_sq)
+chisq.test(data1)
+```
+
+
+
+
+
+
